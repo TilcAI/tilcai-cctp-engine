@@ -1,0 +1,37 @@
+{
+  "name": "usdc-crosschain-lab",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "tsx --test src/test/*.test.ts",
+    "verify": "tsx src/scripts/verify.ts",
+    "balances": "tsx src/scripts/balances.ts",
+    "faucet": "tsx src/scripts/faucet.ts",
+    "matrix": "tsx src/scripts/matrix.ts",
+    "transfer": "tsx src/scripts/transfer.ts",
+    "typecheck": "tsc -p .",
+    "wallets:new": "tsx src/scripts/new-wallets.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Pruebas de transferencias USDC cross-chain con Circle CCTP (V1/V2 + Forwarding Service) entre Ethereum, Avalanche, Arbitrum, Base, Arc, Solana, Sui y Stellar (testnet)",
+  "type": "module",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@mysten/sui": "^2.33.2",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.99.0",
+    "@stellar/stellar-sdk": "^15.1.0",
+    "bs58": "^6.0.0",
+    "dotenv": "^18.0.5",
+    "viem": "^2.57.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

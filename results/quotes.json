@@ -1,0 +1,366 @@
+[
+  {
+    "par": "ETH→AVAX",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "ETH→ARB",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.15418"
+  },
+  {
+    "par": "ETH→BASE",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055252"
+  },
+  {
+    "par": "ETH→ARC",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.01854"
+  },
+  {
+    "par": "ETH→SOL",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142595"
+  },
+  {
+    "par": "ETH→SUI",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "ETH→XLM",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "AVAX→ETH",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "AVAX→ARB",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.154181"
+  },
+  {
+    "par": "AVAX→BASE",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055252"
+  },
+  {
+    "par": "AVAX→ARC",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.01854"
+  },
+  {
+    "par": "AVAX→SOL",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142595"
+  },
+  {
+    "par": "AVAX→SUI",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "AVAX→XLM",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "ARB→ETH",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "ARB→AVAX",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "ARB→BASE",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055252"
+  },
+  {
+    "par": "ARB→ARC",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.01854"
+  },
+  {
+    "par": "ARB→SOL",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142595"
+  },
+  {
+    "par": "ARB→SUI",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "ARB→XLM",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "BASE→ETH",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "BASE→AVAX",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "BASE→ARB",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.154181"
+  },
+  {
+    "par": "BASE→ARC",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.01854"
+  },
+  {
+    "par": "BASE→SOL",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142595"
+  },
+  {
+    "par": "BASE→SUI",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "BASE→XLM",
+    "cctp": "V2",
+    "fastBps": 1.3,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "ARC→ETH",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "ARC→AVAX",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "ARC→ARB",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.154181"
+  },
+  {
+    "par": "ARC→BASE",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055252"
+  },
+  {
+    "par": "ARC→SOL",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142595"
+  },
+  {
+    "par": "ARC→SUI",
+    "cctp": "✗",
+    "nota": "2 saltos: ARC→BASE→SUI"
+  },
+  {
+    "par": "ARC→XLM",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "SOL→ETH",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "SOL→AVAX",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "SOL→ARB",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.154181"
+  },
+  {
+    "par": "SOL→BASE",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055252"
+  },
+  {
+    "par": "SOL→ARC",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.01854"
+  },
+  {
+    "par": "SOL→SUI",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SOL→XLM",
+    "cctp": "V2",
+    "fastBps": 1,
+    "standardBps": 0,
+    "forwardFeeUSDC": "no soportado"
+  },
+  {
+    "par": "SUI→ETH",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SUI→AVAX",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SUI→ARB",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SUI→BASE",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SUI→ARC",
+    "cctp": "✗",
+    "nota": "2 saltos: SUI→BASE→ARC"
+  },
+  {
+    "par": "SUI→SOL",
+    "cctp": "V1",
+    "nota": "V1: sin fees de protocolo, sin Fast, sin forwarding"
+  },
+  {
+    "par": "SUI→XLM",
+    "cctp": "✗",
+    "nota": "2 saltos: SUI→BASE→XLM"
+  },
+  {
+    "par": "XLM→ETH",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "2.116799"
+  },
+  {
+    "par": "XLM→AVAX",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055682"
+  },
+  {
+    "par": "XLM→ARB",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.154886"
+  },
+  {
+    "par": "XLM→BASE",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.055063"
+  },
+  {
+    "par": "XLM→ARC",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.018985"
+  },
+  {
+    "par": "XLM→SOL",
+    "cctp": "V2",
+    "fastBps": 0,
+    "standardBps": 0,
+    "forwardFeeUSDC": "0.142919"
+  },
+  {
+    "par": "XLM→SUI",
+    "cctp": "✗",
+    "nota": "2 saltos: XLM→BASE→SUI"
+  }
+]
