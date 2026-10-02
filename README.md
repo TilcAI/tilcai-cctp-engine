@@ -13,8 +13,9 @@ Laboratorio de transferencias **USDC cross-chain** con **Circle CCTP** (V2, V1 l
 ## Configuración
 
 ```bash
-cp .env.example .env        # o bien:
-npm run wallets:new         # genera wallets de laboratorio para las familias que falten (sólo imprime direcciones)
+bash scripts/cli-wallets.sh # genera wallets con las CLIs oficiales (cast, solana-keygen, sui, stellar) → .env + .wallets/
+bash scripts/cli-wallets.sh --faucet   # sólo faucets por CLI (solana airdrop, sui faucet, friendbot + trustline USDC)
+npm run wallets:new         # alternativa sin CLIs (genera con los SDKs las que falten)
 npm run faucet              # SOL airdrop, SUI faucet, Friendbot + trustline USDC en Stellar, links de faucets EVM/USDC
 npm run balances            # USDC + gas en las 8 redes
 ```
