@@ -9,7 +9,8 @@
     "matrix": "tsx src/scripts/matrix.ts",
     "transfer": "tsx src/scripts/transfer.ts",
     "typecheck": "tsc -p .",
-    "wallets:new": "tsx src/scripts/new-wallets.ts"
+    "wallets:new": "tsx src/scripts/new-wallets.ts",
+    "relayer:status": "tsx src/scripts/relayer-status.ts"
   },
   "keywords": [],
   "author": "",

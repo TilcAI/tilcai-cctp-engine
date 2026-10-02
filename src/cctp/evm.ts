@@ -1,4 +1,5 @@
 import {
+  encodeFunctionData,
   createPublicClient,
   createWalletClient,
   defineChain,
@@ -13,6 +14,40 @@ import { CCTP_V2_EVM, EVM, type EvmChainCfg } from "../config/chains.js";
 import { evmAccount } from "../lib/env.js";
 import { log } from "../lib/log.js";
 import type { Hex } from "../lib/encoding.js";
+import { getRelayer, relayerEnabled, relayerIdFor, sendEvmTx, waitTx } from "../relayer/client.js";
+
+/** id del relayer OZ para esta chain si EXECUTOR=relayer, si no undefined (wallet local). */
+function relayerFor(key: EvmKey): string | undefined {
+  if (!relayerEnabled()) return undefined;
+  const id = relayerIdFor(key);
+  if (!id) throw new Error(`EXECUTOR=relayer pero falta RELAYER_ID_${key.toUpperCase()} en .env`);
+  return id;
+}
+
+/** Dirección que firma en esta chain: la del relayer (modo relayer) o la wallet local. */
+export async function evmSender(key: EvmKey): Promise<Hex> {
+  const id = relayerFor(key);
+  if (id) return (await getRelayer(id)).address as Hex;
+  return evmAccount().address;
+}
+
+/** Envía una llamada: vía relayer OZ (firma y paga gas el relayer) o con la wallet local. */
+async function sendCall(key: EvmKey, to: Hex, data: Hex, label: string): Promise<Hex> {
+  const { pub, wallet, cfg } = evmClients(key, !relayerFor(key));
+  const id = relayerFor(key);
+  let hash: Hex;
+  if (id) {
+    const sent = await sendEvmTx(id, { to, data });
+    log.info(`${label}: enviada al relayer ${id} (tx ${sent.id})`);
+    hash = (await waitTx(id, sent.id)).hash as Hex;
+  } else {
+    hash = await (wallet as any).sendTransaction({ to, data, chain: wallet.chain, account: wallet.account! });
+  }
+  const rcpt = await pub.waitForTransactionReceipt({ hash });
+  if (rcpt.status !== "success") throw new Error(`${label} revertido: ${hash}`);
+  log.tx(`${label}${id ? " [relayer]" : ""}`, `${cfg.explorer}/tx/${hash}`);
+  return hash;
+}
 
 export type EvmKey = keyof typeof EVM;
 
@@ -66,21 +101,12 @@ export async function evmNativeBalance(key: EvmKey, owner: string): Promise<bigi
 }
 
 async function ensureAllowance(key: EvmKey, spender: Hex, amount: bigint) {
-  const { pub, wallet, cfg } = evmClients(key);
-  const owner = wallet.account!.address;
+  const { pub, cfg } = evmClients(key, false);
+  const owner = await evmSender(key);
   const current = await pub.readContract({ address: cfg.usdc, abi: erc20Abi, functionName: "allowance", args: [owner, spender] });
   if (current >= amount) return;
   log.info(`approve(${spender}, ${amount}) en ${cfg.name}`);
-  const hash = await wallet.writeContract({
-    address: cfg.usdc,
-    abi: erc20Abi,
-    functionName: "approve",
-    args: [spender, amount],
-    chain: wallet.chain,
-    account: wallet.account!,
-  });
-  await pub.waitForTransactionReceipt({ hash });
-  log.tx("approve", `${cfg.explorer}/tx/${hash}`);
+  await sendCall(key, cfg.usdc, encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [spender, amount] }), "approve");
 }
 
 export interface EvmBurnParams {
@@ -97,65 +123,29 @@ export interface EvmBurnParams {
 
 /** depositForBurn (V2 o V1). Devuelve el hash de la tx de burn. */
 export async function evmBurn(p: EvmBurnParams): Promise<Hex> {
-  const { pub, wallet, cfg } = evmClients(p.key);
-  const account = wallet.account!;
-  let hash: Hex;
+  const { cfg } = evmClients(p.key, false);
   if (p.version === 2) {
     if (!cfg.cctpV2) throw new Error(`${cfg.name} no soporta CCTP V2`);
     await ensureAllowance(p.key, CCTP_V2_EVM.tokenMessenger, p.amount);
     const common = [p.amount, p.destinationDomain, p.mintRecipient, cfg.usdc, p.destinationCaller, p.maxFee, p.minFinalityThreshold] as const;
-    hash = p.hookData
-      ? await wallet.writeContract({
-          address: CCTP_V2_EVM.tokenMessenger,
-          abi: TOKEN_MESSENGER_V2_ABI,
-          functionName: "depositForBurnWithHook",
-          args: [...common, p.hookData],
-          chain: wallet.chain,
-          account,
-        })
-      : await wallet.writeContract({
-          address: CCTP_V2_EVM.tokenMessenger,
-          abi: TOKEN_MESSENGER_V2_ABI,
-          functionName: "depositForBurn",
-          args: common,
-          chain: wallet.chain,
-          account,
-        });
-  } else {
-    if (!cfg.cctpV1) throw new Error(`${cfg.name} no tiene CCTP V1`);
-    await ensureAllowance(p.key, cfg.cctpV1.tokenMessenger, p.amount);
-    hash = await wallet.writeContract({
-      address: cfg.cctpV1.tokenMessenger,
-      abi: TOKEN_MESSENGER_V1_ABI,
-      functionName: "depositForBurn",
-      args: [p.amount, p.destinationDomain, p.mintRecipient, cfg.usdc],
-      chain: wallet.chain,
-      account,
-    });
+    const data = p.hookData
+      ? encodeFunctionData({ abi: TOKEN_MESSENGER_V2_ABI, functionName: "depositForBurnWithHook", args: [...common, p.hookData] })
+      : encodeFunctionData({ abi: TOKEN_MESSENGER_V2_ABI, functionName: "depositForBurn", args: common });
+    return sendCall(p.key, CCTP_V2_EVM.tokenMessenger, data, "depositForBurn (CCTP v2)");
   }
-  const rcpt = await pub.waitForTransactionReceipt({ hash });
-  if (rcpt.status !== "success") throw new Error(`burn revertido: ${hash}`);
-  log.tx(`depositForBurn (CCTP v${p.version})`, `${cfg.explorer}/tx/${hash}`);
-  return hash;
+  if (!cfg.cctpV1) throw new Error(`${cfg.name} no tiene CCTP V1`);
+  await ensureAllowance(p.key, cfg.cctpV1.tokenMessenger, p.amount);
+  const data = encodeFunctionData({ abi: TOKEN_MESSENGER_V1_ABI, functionName: "depositForBurn", args: [p.amount, p.destinationDomain, p.mintRecipient, cfg.usdc] });
+  return sendCall(p.key, cfg.cctpV1.tokenMessenger, data, "depositForBurn (CCTP v1)");
 }
 
 /** receiveMessage en el MessageTransmitter (V2 o V1) del destino → mintea USDC. */
 export async function evmReceive(key: EvmKey, message: Hex, attestation: Hex, version: 1 | 2): Promise<Hex> {
-  const { pub, wallet, cfg } = evmClients(key);
+  const { cfg } = evmClients(key, false);
   const transmitter = version === 2 ? CCTP_V2_EVM.messageTransmitter : cfg.cctpV1?.messageTransmitter;
   if (!transmitter) throw new Error(`${cfg.name} sin MessageTransmitter v${version}`);
-  const hash = await wallet.writeContract({
-    address: transmitter as Hex,
-    abi: MESSAGE_TRANSMITTER_ABI,
-    functionName: "receiveMessage",
-    args: [message, attestation],
-    chain: wallet.chain,
-    account: wallet.account!,
-  });
-  const rcpt = await pub.waitForTransactionReceipt({ hash });
-  if (rcpt.status !== "success") throw new Error(`receiveMessage revertido: ${hash}`);
-  log.tx(`receiveMessage (CCTP v${version})`, `${cfg.explorer}/tx/${hash}`);
-  return hash;
+  const data = encodeFunctionData({ abi: MESSAGE_TRANSMITTER_ABI, functionName: "receiveMessage", args: [message, attestation] });
+  return sendCall(key, transmitter as Hex, data, `receiveMessage (CCTP v${version})`);
 }
 
 /** Comprueba on-chain que los contratos configurados existen y responden. */

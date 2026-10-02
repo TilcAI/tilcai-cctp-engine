@@ -5,10 +5,10 @@ import { myAddresses } from "../lib/env.js";
 import { mintTargetFor, toUnits, fromUnits, type Hex } from "../lib/encoding.js";
 import { FORWARD_HOOK, getFeeBps, getForwardFee, maxFeeFor, waitForAttestation, waitForForward } from "../lib/iris.js";
 import { log } from "../lib/log.js";
-import { evmBurn, evmReceive, type EvmKey } from "./evm.js";
+import { evmBurn, evmReceive, evmSender, type EvmKey } from "./evm.js";
 import { solBurn, solReceive, ensureUsdcAta } from "./solana.js";
 import { suiBurn, suiReceive } from "./sui.js";
-import { stellarBurn, stellarMintAndForward, ensureUsdcTrustline } from "./stellar.js";
+import { stellarBurn, stellarMintAndForward, ensureUsdcTrustline, stellarSender } from "./stellar.js";
 import { getBalance } from "../lib/balances.js";
 
 export type CctpPlan =
@@ -52,10 +52,12 @@ export interface TransferResult {
   startedAt: string;
 }
 
-function defaultRecipient(dst: ChainKey): string {
-  const a = myAddresses();
-  const r = a[familyOf(dst)];
-  if (!r) throw new Error(`No hay wallet/dirección configurada para ${nameOf(dst)}`);
+/** Cuenta propia en una chain: la del relayer OZ si EXECUTOR=relayer (EVM/Stellar), si no la wallet local. */
+export async function ownerOf(chain: ChainKey): Promise<string> {
+  if (familyOf(chain) === "evm") return evmSender(chain as EvmKey);
+  if (chain === "stellar") return stellarSender();
+  const r = myAddresses()[familyOf(chain)];
+  if (!r) throw new Error(`No hay wallet/dirección configurada para ${nameOf(chain)}`);
   return r;
 }
 
@@ -75,7 +77,7 @@ export async function cctpTransfer(opts: {
   const { src, dst, amount } = opts;
   const t0 = Date.now();
   const plan = planCctp(src, dst);
-  const recipient = opts.recipient ?? defaultRecipient(dst);
+  const recipient = opts.recipient ?? (await ownerOf(dst));
   const res: TransferResult = {
     protocol: "CCTP",
     version: plan.kind === "direct" ? plan.version : 2,
@@ -101,14 +103,13 @@ export async function cctpTransfer(opts: {
 
   try {
     log.step(0, `CCTP v${version} ${nameOf(src)} (domain ${srcDomain}) → ${nameOf(dst)} (domain ${dstDomain}), ${amount} USDC, ${finality === 1000 ? "FAST" : "STANDARD"}`);
-    const me = myAddresses();
-    const srcOwner = me[familyOf(src)]!;
+    const srcOwner = await ownerOf(src);
     res.balancesBefore = { [src]: await getBalance(src, srcOwner), [dst]: await getBalance(dst, recipient) };
     log.info(`Saldos antes: ${JSON.stringify(res.balancesBefore)}`);
 
     // Pre-requisitos del destino
     if (dst === "solana") await ensureUsdcAta(new PublicKey(recipient));
-    if (dst === "stellar" && recipient === me.stellar) await ensureUsdcTrustline();
+    if (dst === "stellar" && recipient === (await ownerOf("stellar"))) await ensureUsdcTrustline();
 
     const target = mintTargetFor(dst, recipient);
     // Forwarding Service: sólo V2 y destinos sin hook propio (Stellar usa CctpForwarder).

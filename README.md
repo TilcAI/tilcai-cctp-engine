@@ -57,3 +57,23 @@ src/
 
 - `.env` está en `.gitignore` y se crea con permisos `600`. Ningún script imprime claves: sólo direcciones públicas.
 - Sólo testnet. Para mainnet cambia `IRIS_API_URL`, RPCs y direcciones en `src/config/chains.ts`.
+
+## Modo OpenZeppelin Relayer (rama `feat/oz-relayer`)
+
+Con `EXECUTOR=relayer` las transacciones EVM (`approve`, `depositForBurn[WithHook]`, `receiveMessage`) y las de Stellar
+(Soroban `approve` / `deposit_for_burn` / `mint_and_forward` y `changeTrust`) **las firma y paga el relayer**:
+
+- EVM: se envía el calldata a `POST /api/v1/relayers/{id}/transactions` (`{to, data, value: 0, speed}`) y se espera `mined/confirmed`.
+- Stellar: la tx se construye y simula con la cuenta del relayer como *source* y se envía sin firmar como `transaction_xdr`.
+- La cuenta de origen/destino CCTP pasa a ser **la dirección del relayer** (debe tener USDC para quemar).
+- Solana y Sui no están soportados por el relayer en este flujo: siguen usando las wallets locales.
+
+```bash
+# .env
+EXECUTOR=relayer
+RELAYER_URL=http://192.168.1.57:8080      # → http://localhost:8080 cuando corra en local
+RELAYER_API_KEY=...
+RELAYER_ID_AVALANCHE=...                  # ids: npm run relayer:status
+npm run relayer:status                    # salud, relayers, direcciones, saldos y mapeo sugerido
+npm run transfer -- --from avalanche --to stellar --amount 0.1
+```

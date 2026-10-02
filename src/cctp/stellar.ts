@@ -14,6 +14,50 @@ import { STELLAR } from "../config/chains.js";
 import { stellarKeypair } from "../lib/env.js";
 import { hexToBuf, type Hex } from "../lib/encoding.js";
 import { log } from "../lib/log.js";
+import { getRelayer, relayerEnabled, relayerIdFor, sendStellarXdr, waitTx } from "../relayer/client.js";
+
+function stellarRelayer(): string | undefined {
+  if (!relayerEnabled()) return undefined;
+  const id = relayerIdFor("stellar");
+  if (!id) throw new Error("EXECUTOR=relayer pero falta RELAYER_ID_STELLAR en .env");
+  return id;
+}
+
+/** Cuenta que firma en Stellar: la del relayer (modo relayer) o la wallet local. */
+export async function stellarSender(): Promise<string> {
+  const id = stellarRelayer();
+  return id ? ((await getRelayer(id)).address as string) : stellarKeypair().publicKey();
+}
+
+/** Envía una tx ya construida (sin firmar): al relayer OZ como XDR, o firmada localmente. Devuelve el hash. */
+async function submit(tx: ReturnType<TransactionBuilder["build"]>, label: string, classic = false): Promise<string> {
+  const id = stellarRelayer();
+  if (id) {
+    const info = await getRelayer(id);
+    const sent = await sendStellarXdr(id, info.network, tx.toXDR());
+    log.info(`${label}: enviada al relayer ${id} (tx ${sent.id})`);
+    const done = await waitTx(id, sent.id);
+    log.tx(`${label} [relayer]`, `${STELLAR.explorer}/tx/${done.hash}`);
+    return done.hash!;
+  }
+  tx.sign(stellarKeypair());
+  if (classic) {
+    const r = await horizon().submitTransaction(tx);
+    log.tx(label, `${STELLAR.explorer}/tx/${r.hash}`);
+    return r.hash;
+  }
+  const srv = server();
+  const sent = await srv.sendTransaction(tx);
+  if (sent.status === "ERROR") throw new Error(`sendTransaction ${label}: ${JSON.stringify(sent.errorResult)}`);
+  let got = await srv.getTransaction(sent.hash);
+  while (got.status === rpc.Api.GetTransactionStatus.NOT_FOUND) {
+    await new Promise((r) => setTimeout(r, 2000));
+    got = await srv.getTransaction(sent.hash);
+  }
+  if (got.status !== rpc.Api.GetTransactionStatus.SUCCESS) throw new Error(`${label} falló on-chain: ${sent.hash}`);
+  log.tx(label, `${STELLAR.explorer}/tx/${sent.hash}`);
+  return sent.hash;
+}
 
 /**
  * CCTP V2 en Stellar (domain 27) — contratos Soroban.
@@ -48,42 +92,28 @@ export async function stellarFriendbot(account: string) {
 
 /** Trustline USDC:GBBD… — obligatoria para que una cuenta G… pueda recibir USDC. */
 export async function ensureUsdcTrustline() {
-  const kp = stellarKeypair();
-  const st = await stellarBalances(kp.publicKey());
+  const who = await stellarSender();
+  const st = await stellarBalances(who);
   if (st.trustline) return;
-  const acc = await horizon().loadAccount(kp.publicKey());
+  const acc = await horizon().loadAccount(who);
   const tx = new TransactionBuilder(acc, { fee: BASE_FEE, networkPassphrase: STELLAR.passphrase })
     .addOperation(Operation.changeTrust({ asset: USDC_ASSET }))
-    .setTimeout(60)
+    .setTimeout(300)
     .build();
-  tx.sign(kp);
-  const r = await horizon().submitTransaction(tx);
-  log.tx("changeTrust USDC", `${STELLAR.explorer}/tx/${r.hash}`);
+  await submit(tx, "changeTrust USDC", true);
 }
 
 /** Simula → ensambla (footprint + resource fee) → firma → envía → espera. */
 async function invoke(contractId: string, method: string, args: xdr.ScVal[]): Promise<string> {
-  const kp = stellarKeypair();
   const srv = server();
-  const account = await srv.getAccount(kp.publicKey());
+  const account = await srv.getAccount(await stellarSender());
   const tx = new TransactionBuilder(account, { fee: "10000000", networkPassphrase: STELLAR.passphrase })
     .addOperation(new Contract(contractId).call(method, ...args))
-    .setTimeout(120)
+    .setTimeout(300)
     .build();
   const sim = await srv.simulateTransaction(tx);
   if (rpc.Api.isSimulationError(sim)) throw new Error(`Simulación ${method} falló: ${sim.error}`);
-  const prepared = rpc.assembleTransaction(tx, sim).build();
-  prepared.sign(kp);
-  const sent = await srv.sendTransaction(prepared);
-  if (sent.status === "ERROR") throw new Error(`sendTransaction ${method}: ${JSON.stringify(sent.errorResult)}`);
-  let got = await srv.getTransaction(sent.hash);
-  while (got.status === rpc.Api.GetTransactionStatus.NOT_FOUND) {
-    await new Promise((r) => setTimeout(r, 2000));
-    got = await srv.getTransaction(sent.hash);
-  }
-  if (got.status !== rpc.Api.GetTransactionStatus.SUCCESS) throw new Error(`${method} falló on-chain: ${sent.hash}`);
-  log.tx(method, `${STELLAR.explorer}/tx/${sent.hash}`);
-  return sent.hash;
+  return submit(rpc.assembleTransaction(tx, sim).build(), method);
 }
 
 export interface StellarBurnParams {
@@ -98,8 +128,7 @@ export interface StellarBurnParams {
 
 /** approve(USDC SAC → TokenMessengerMinter) + deposit_for_burn[_with_hook]. Devuelve el hash (hex) para Iris. */
 export async function stellarBurn(p: StellarBurnParams): Promise<string> {
-  const kp = stellarKeypair();
-  const me = new Address(kp.publicKey()).toScVal();
+  const me = new Address(await stellarSender()).toScVal();
   const latest = await server().getLatestLedger();
   await invoke(STELLAR.usdcSac, "approve", [
     me,
