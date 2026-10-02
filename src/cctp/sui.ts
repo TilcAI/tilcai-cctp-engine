@@ -108,7 +108,7 @@ export async function suiReceive(messageHex: Hex, attestationHex: Hex): Promise<
     target: `${MT}::receive_message::complete_receive_message`,
     arguments: [stamped, tx.object(messageTransmitterState)],
   });
-  tx.setGasBudget(1_000_000_000);
+  tx.setGasBudget(200_000_000); // 0.2 SUI (el PTB real consume ~0.01–0.03 SUI)
   const res = await exec(tx);
   log.tx("receive_message PTB (CCTP v1)", `${SUI.explorer}/tx/${res.digest}`);
   return res.digest;

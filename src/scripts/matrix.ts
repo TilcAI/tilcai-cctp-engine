@@ -3,7 +3,12 @@
  *   npm run matrix                    → matriz de soporte V1/V2 (sin firmar nada)
  *   npm run matrix -- --quote         → + fees reales de Iris: Fast/Standard (bps) y Forwarding Service (USDC)
  *   npm run matrix -- --run [--amount 0.05] [--fast] [--forward] [--hop base] [--only base,solana]
+ *                         [--skip-src arbitrum,base] [--forward-to arbitrum,base] [--fast-src ethereum,solana] [--skip-done]
  *                                     → ejecuta TODOS los pares (los 4 sin ruta directa, en 2 saltos vía --hop)
+ *     --skip-src     orígenes a omitir (p. ej. sin gas)
+ *     --forward-to   destinos donde usar Circle Forwarding Service (p. ej. sin gas para el mint)
+ *     --fast-src     orígenes donde usar Fast Transfer (ETH/L2/Solana: segundos en vez de ~15–19 min)
+ *     --skip-done    no repite pares con status "ok" en results/transfers.jsonl
  */
 import fs from "node:fs";
 import { ALL_CHAINS, domainOf, familyOf, nameOf, type ChainKey } from "../config/chains.js";
@@ -22,6 +27,10 @@ const flag = (k: string) => args.includes(`--${k}`);
 const only = arg("only")?.split(",") as ChainKey[] | undefined;
 const chains = only ?? ALL_CHAINS;
 const hop = (arg("hop") ?? "base") as ChainKey;
+const list = (k: string) => (arg(k)?.split(",") ?? []) as ChainKey[];
+const skipSrc = list("skip-src");
+const forwardTo = list("forward-to");
+const fastSrc = list("fast-src");
 const short: Record<ChainKey, string> = { ethereum: "ETH", avalanche: "AVAX", arbitrum: "ARB", base: "BASE", arc: "ARC", solana: "SOL", sui: "SUI", stellar: "XLM" };
 
 function cell(src: ChainKey, dst: ChainKey) {
@@ -68,27 +77,50 @@ if (flag("run")) {
   // de modo que los fondos que entran a una chain se reutilizan en la siguiente ronda.
   const pairs: [ChainKey, ChainKey][] = [];
   for (let k = 1; k < chains.length; k++) for (let i = 0; i < chains.length; i++) pairs.push([chains[i], chains[(i + k) % chains.length]]);
+  const done = new Set<string>();
+  if (flag("skip-done") && fs.existsSync("results/transfers.jsonl"))
+    for (const l of fs.readFileSync("results/transfers.jsonl", "utf8").split("\n").filter(Boolean)) {
+      const r = JSON.parse(l);
+      if (r.status === "ok" && r.round) done.add(r.round);
+    }
+  const summary: Record<string, string>[] = [];
+  const optsFor = (src: ChainKey, dst: ChainKey) => ({
+    fast: flag("fast") || fastSrc.includes(src),
+    forward: flag("forward") || forwardTo.includes(dst),
+  });
   for (const [s, d] of pairs) {
+    const tag = `${s}->${d}`;
+    if (skipSrc.includes(s)) continue;
+    if (done.has(tag)) {
+      summary.push({ par: tag, estado: "ok (previo)" });
+      continue;
+    }
     const owner = me[familyOf(s)];
     if (!owner || !me[familyOf(d)]) {
-      saveResult({ src: s, dst: d, status: "skipped", error: "falta wallet en .env" });
+      saveResult({ round: tag, src: s, dst: d, status: "skipped", error: "falta wallet en .env" });
       continue;
     }
     const bal = Number(await getBalance(s, owner).catch(() => "0"));
     if (bal < Number(amount)) {
       console.log(`⏭  ${nameOf(s)} → ${nameOf(d)}: saldo insuficiente (${bal} USDC)`);
-      saveResult({ src: s, dst: d, status: "skipped", error: `saldo insuficiente ${bal}` });
+      saveResult({ round: tag, src: s, dst: d, status: "skipped", error: `saldo insuficiente ${bal}` });
+      summary.push({ par: tag, estado: "saldo insuficiente" });
       continue;
     }
-    const opts = { fast: flag("fast"), forward: flag("forward") };
+    console.log(`\n════════ ${tag} ════════`);
+    let r;
     if (planCctp(s, d).kind === "direct") {
-      await cctpTransfer({ src: s, dst: d, amount, ...opts });
+      r = await cctpTransfer({ src: s, dst: d, amount, ...optsFor(s, d) });
     } else {
-      const a = await cctpTransfer({ src: s, dst: hop, amount, ...opts });
+      const a = await cctpTransfer({ src: s, dst: hop, amount, ...optsFor(s, hop) });
       const got = a.balancesAfter && a.balancesBefore ? (Number(a.balancesAfter[hop]) - Number(a.balancesBefore[hop])).toFixed(6) : amount;
-      if (a.status === "ok") await cctpTransfer({ src: hop, dst: d, amount: got, ...opts });
+      r = a.status === "ok" ? await cctpTransfer({ src: hop, dst: d, amount: got, ...optsFor(hop, d) }) : a;
     }
+    // marca de ronda para --skip-done
+    saveResult({ round: tag, src: s, dst: d, status: r.status, error: r.error, burnTx: r.burnTx, mintTx: r.mintTx, totalSeconds: r.totalSeconds, version: r.version, forwarded: r.forwarded });
+    summary.push({ par: tag, estado: r.status, v: `V${r.version}`, seg: String(r.totalSeconds ?? ""), error: (r.error ?? "").slice(0, 70) });
   }
+  console.table(summary);
   console.log("Resultados en results/transfers.jsonl");
 }
 process.exit(0);

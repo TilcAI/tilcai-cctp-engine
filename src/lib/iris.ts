@@ -98,7 +98,7 @@ export async function waitForForward(sourceDomain: number, txId: string, { timeo
       const s = `${m?.status}/${m?.forwardState ?? "-"}`;
       if (s !== last) log.info(`Iris: status=${m?.status} forwardState=${m?.forwardState ?? "-"}`);
       last = s;
-      if (m?.forwardState === "COMPLETE") return m;
+      if (m?.forwardState === "COMPLETE" || m?.forwardState === "CONFIRMED") return m;
       if (m?.forwardState === "FAILED") throw new Error("Forwarding FAILED: el mensaje sigue atestado; se puede hacer receiveMessage manual");
     }
     await sleep(pollMs);

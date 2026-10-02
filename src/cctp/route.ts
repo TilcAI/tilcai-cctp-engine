@@ -218,20 +218,7 @@ export async function cctpTransfer(opts: {
 
     // 3) MINT
     log.step(3, `mint en ${nameOf(dst)}`);
-    switch (familyOf(dst)) {
-      case "evm":
-        res.mintTx = await evmReceive(dst as EvmKey, message, attestation, version);
-        break;
-      case "solana":
-        res.mintTx = await solReceive(message, attestation, version);
-        break;
-      case "sui":
-        res.mintTx = await suiReceive(message, attestation);
-        break;
-      case "stellar":
-        res.mintTx = await stellarMintAndForward(message, attestation);
-        break;
-    }
+    res.mintTx = await mintOnDest(dst, version, message, attestation);
     res.balancesAfter = { [src]: await getBalance(src, srcOwner), [dst]: await getBalance(dst, recipient) };
     log.info(`Saldos después: ${JSON.stringify(res.balancesAfter)}`);
     res.status = "ok";
@@ -240,6 +227,42 @@ export async function cctpTransfer(opts: {
   } catch (e) {
     res.error = e instanceof Error ? e.message : String(e);
     log.err(res.error);
+  }
+  saveResult(res);
+  return res;
+}
+
+/** Paso 3: mint en destino con el adaptador de su familia. */
+export async function mintOnDest(dst: ChainKey, version: 1 | 2, message: Hex, attestation: Hex): Promise<string> {
+  switch (familyOf(dst)) {
+    case "evm":
+      return evmReceive(dst as EvmKey, message, attestation, version);
+    case "solana":
+      return solReceive(message, attestation, version);
+    case "sui":
+      return suiReceive(message, attestation);
+    case "stellar":
+      return stellarMintAndForward(message, attestation);
+  }
+}
+
+/**
+ * Retoma una transferencia cuyo burn ya se hizo (p. ej. el mint falló o se cortó el proceso):
+ * obtiene mensaje + atestación de Iris por el hash del burn y ejecuta el mint en destino.
+ */
+export async function cctpResume(opts: { src: ChainKey; dst: ChainKey; burnTx: string }) {
+  const res: Record<string, unknown> = { protocol: "CCTP", resumed: true, src: opts.src, dst: opts.dst, burnTx: opts.burnTx, status: "error", startedAt: new Date().toISOString() };
+  try {
+    log.step(2, `obteniendo atestación de ${opts.burnTx}`);
+    const att = await waitForAttestation(domainOf(opts.src), opts.burnTx);
+    log.step(3, `mint en ${nameOf(opts.dst)}`);
+    res.version = att.cctpVersion;
+    res.mintTx = await mintOnDest(opts.dst, att.cctpVersion === 2 ? 2 : 1, att.message as Hex, att.attestation as Hex);
+    res.status = "ok";
+    log.ok("mint completado");
+  } catch (e) {
+    res.error = e instanceof Error ? e.message : String(e);
+    log.err(String(res.error));
   }
   saveResult(res);
   return res;
