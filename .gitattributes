@@ -1,0 +1,2 @@
+# Dos ramas que añaden entradas al historial se combinan sin conflicto.
+AGENT_HISTORY.md merge=union
